@@ -48,12 +48,12 @@ use std::io;
 use std::fmt::{Debug, Formatter, Error};
 use std::cmp::{min,max};
 
-type Row = Vec<u8>;
+type Row = Vec<u16>;
 struct Board(Vec<Row>);
 #[derive(Debug)]
 struct Coord {
-    x: u8,
-    y: u8,
+    x: u16,
+    y: u16,
 }
 #[derive(Debug)]
 struct VentLine {
@@ -120,12 +120,14 @@ fn main() {
     }
     // Print board
     println!("{:?}", board);
+    let answer = board.0.iter().flatten().filter(|&x| *x >= 2).count();
+    println!("answer = {:?}", answer);
 }
 
 fn parse_tuple(txt: &str) -> Coord {
-    let ints: Vec<u8> = txt.replace(&['(',')'][..], "")
+    let ints: Vec<u16> = txt.replace(&['(',')'][..], "")
                       .split(",")
-                      .map(|s| s.parse::<u8>().unwrap())
+                      .map(|s| s.parse::<u16>().unwrap())
                       .collect();
     Coord {
         x: ints[0],
