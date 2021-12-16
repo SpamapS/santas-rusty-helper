@@ -70,10 +70,10 @@ Consider all of the lines. At how many points do at least two lines overlap?
 
 
 */
-#![feature(stdin_forwarders,str_split_whitespace_as_str)]
+#![feature(stdin_forwarders, str_split_whitespace_as_str)]
+use std::cmp::{max, min};
+use std::fmt::{Debug, Error, Formatter};
 use std::io;
-use std::fmt::{Debug, Formatter, Error};
-use std::cmp::{min,max};
 
 type Row = Vec<i32>;
 struct Board(Vec<Row>);
@@ -90,10 +90,19 @@ struct VentLine {
 
 impl Debug for Board {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+        let mut j = 0;
         for row in self.0.iter() {
-            //write!(f, "{}\n", String::from("-").repeat(row.len() * 3))?;
+            write!(f, "{:06} ", j);
+            j += 1;
             for col in row.iter() {
-               write!(f, "{}", match col { 0 => String::from("."), n => format!("{}",n)})?
+                write!(
+                    f,
+                    "{}",
+                    match col {
+                        0 => String::from("."),
+                        n => format!("{}", n),
+                    }
+                )?
             }
             write!(f, "\n")?;
         }
@@ -105,85 +114,79 @@ fn main() {
     println!("Paste vent report:");
     let mut max_x = 0;
     let mut max_y = 0;
-    let vent_lines: Vec<VentLine> = io::stdin().lines().map(|line| {
-        let line = line.unwrap();
-        let mut tuples = line.split(" -> ");
-        let begin = parse_tuple(tuples.next().unwrap());
-        max_x = max(begin.x, max_x);
-        max_y = max(begin.y, max_y);
-        let end = parse_tuple(tuples.next().unwrap());
-        max_x = max(end.x, max_x);
-        max_y = max(end.y, max_y);
-        VentLine {
-            begin: begin,
-            end: end,
-        }
-    }).collect();
+    let vent_lines: Vec<VentLine> = io::stdin()
+        .lines()
+        .map(|line| {
+            let line = line.unwrap();
+            let mut tuples = line.split(" -> ");
+            let begin = parse_tuple(tuples.next().unwrap());
+            max_x = max(begin.x, max_x);
+            max_y = max(begin.y, max_y);
+            let end = parse_tuple(tuples.next().unwrap());
+            max_x = max(end.x, max_x);
+            max_y = max(end.y, max_y);
+            VentLine {
+                begin: begin,
+                end: end,
+            }
+        })
+        .collect();
     // Make the board
     let mut board = Board(Vec::new());
-    for _row in 0..max_y+1 {
-        board.0.push((0..max_x+1).map(|_| 0).collect::<Row>());
+    for _row in 0..max_y + 1 {
+        board.0.push((0..max_x + 2).map(|_| 0).collect::<Row>());
     }
-    println!("{:?}", board);
+    //println!("{:?}", board);
+    println!("Board size is {}x{}", max_x + 1, max_y + 1);
+    println!("Lens are {}x{}", board.0.len(), board.0[0].len());
     // Draw lines
     for vent_line in vent_lines.iter() {
-        /*let start_y = min(vent_line.begin.y, vent_line.end.y);
-        let end_y = max(vent_line.begin.y, vent_line.end.y)+1;
-        let start_x = min(vent_line.begin.x, vent_line.end.x);
-        let end_x = max(vent_line.begin.x, vent_line.end.x)+1;
-        if vent_line.begin.x == vent_line.end.x {
-            println!("{:?} is vertical", vent_line);
-            for row in start_y..end_y {
-                board.0[row as usize][vent_line.begin.x as usize] += 1
+        let start_x = vent_line.begin.x;
+        let end_x = vent_line.end.x;
+        let start_y = vent_line.begin.y;
+        let end_y = vent_line.end.y;
+        let mut row = start_x;
+        let mut col = start_y;
+        let row_step = match end_x - start_x {
+            n if n == 0 => 0,
+            n if n > 0 => 1,
+            _ => -1,
+        };
+        let col_step = match end_y - start_y {
+            n if n == 0 => 0,
+            n if n > 0 => 1,
+            _ => -1,
+        };
+        loop {
+            if row as usize == board.0.len() || col as usize == board.0[row as usize].len() {
+                println!(
+                    "{:?} row={} col={} row_step={} col_step={}",
+                    vent_line, row, col, row_step, col_step
+                );
             }
-        } else if vent_line.begin.y == vent_line.end.y {
-            println!("{:?} is horizontal", vent_line);
-            for col in start_x..end_x {
-                board.0[vent_line.begin.y as usize][col as usize] += 1
+            board.0[row as usize][col as usize] += 1;
+            row += row_step;
+            col += col_step;
+            if row == end_x + row_step && col == end_y + col_step {
+                break;
             }
-        } else {*/
-            //println!("{:?} is diagonal", vent_line);
-            //println!("{:?}", board);
-            println!("{:?}", vent_line);
-            let start_x = vent_line.begin.x;
-            let end_x = vent_line.end.x;
-            let start_y = vent_line.begin.y;
-            let end_y = vent_line.end.y;
-            let mut row = start_x;
-            let mut col = start_y;
-            let row_step = match end_x - start_x {
-                n if n == 0 => 0,
-                n if n > 0 => 1,
-                _ => -1,
-            };
-            let col_step = match end_y - start_y {
-                n if n == 0 => 0,
-                n if n > 0 => 1,
-                _ => -1,
-            };
-            //println!("starting at {},{}", row, col);
-            while row != end_x || col != end_y {
-                board.0[row as usize][col as usize] += 1;
-                row += row_step;
-                col += col_step;
-                //println!("now at {},{}", row, col);
-            }
-            println!("{:?}", board);
-        //}
+        }
+        //println!("{:?}", board);
     }
     // Print board
-    println!("{:?}", board);
+    //println!("{:?}", board);
     let answer = board.0.iter().flatten().filter(|&x| *x >= 2).count();
     println!("answer = {:?}", answer);
 }
 
 fn parse_tuple(txt: &str) -> Coord {
-    let ints: Vec<i32> = txt.replace(&['(',')'][..], "")
-                      .split(",")
-                      .map(|s| s.parse::<i32>().unwrap())
-                      .collect();
+    let ints: Vec<i32> = txt
+        .replace(&['(', ')'][..], "")
+        .split(",")
+        .map(|s| s.parse::<i32>().unwrap())
+        .collect();
     Coord {
         x: ints[0],
-        y: ints[1]
+        y: ints[1],
     }
 }
