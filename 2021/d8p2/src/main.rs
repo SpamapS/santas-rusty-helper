@@ -131,12 +131,13 @@ For each entry, determine all of the wire/segment connections and decode the fou
 */
 #![feature(stdin_forwarders, int_abs_diff)]
 use std::io;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, VecDeque};
 
 //use regex::Regex;
 
 const PATTERNS: [&str;10] = ["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"];
-//const N_SEGMENTS: usize = 7;
+const UNSCRAMBLED: &str = "abcdefg";
+const N_SEGMENTS: usize = 7;
 
 fn main() {
     let mut unique_lens: HashMap<usize, usize> = HashMap::new();
@@ -144,141 +145,57 @@ fn main() {
     unique_lens.insert(4, 4);
     unique_lens.insert(3, 7);
     unique_lens.insert(7, 8);
+    let patterns = Vec::from(PATTERNS);
+    let mut shifted_maps: Vec<HashMap<char, char>> = Vec::with_capacity(N_SEGMENTS);
+    let mut scrambled: VecDeque<char> = UNSCRAMBLED.chars().collect();
+    for i in 0..N_SEGMENTS {
+        let mut map = HashMap::with_capacity(N_SEGMENTS);
+        scrambled.rotate_right(1);
+        println!("Iteration {} = {}", i, String::from_iter(scrambled.iter()));
+        let mut unscrambled_walker = UNSCRAMBLED.chars();
+        for rotated_c in scrambled.iter() {
+            map.insert(*rotated_c, unscrambled_walker.next().unwrap());
+        }
+        shifted_maps.push(map);
+    }
     println!("Input notes:");
     for inputline in io::stdin().lines() {
         let inputline = inputline.unwrap();
         println!("{}", inputline);
         let parts: Vec<&str> = inputline.split("|").collect();
         let signals: Vec<&str> = parts[0].trim().split(" ").collect();
-        let scrambled_digits = parts[1].trim().split(" ");
-        let mut segment_map: Vec<Option<String>> = vec![None;10];
-        let mut known_sorted_signals: HashMap<String, String> = HashMap::new();
-        // digits will reveal some maps
-        for scrambled_digit in scrambled_digits.clone() {
-            let mut sorted_scrambled_digit: Vec<char> = scrambled_digit.chars().collect();
-            sorted_scrambled_digit.sort();
-            let sorted_scrambled_digit = String::from_iter(sorted_scrambled_digit);
-            match unique_lens.get(&scrambled_digit.len()) {
-                None => (),
-                Some(digit) => segment_map[*digit] = Some(sorted_scrambled_digit),
+        let scrambled_digits: Vec<&str> = parts[1].trim().split(" ").collect();
+        for (i, shifted_map) in shifted_maps.iter().enumerate() {
+            println!("Trying {}", i);
+            if validate_map(shifted_map, &patterns, &unique_lens, &signals, &scrambled_digits) {
+                println!("Huzzah!: {:?}", shifted_map);
             }
         }
-        // Any signals with the same lens as those we found?
-        let mut misses: Vec<String> = Vec::new();
-        for scrambled_signal in signals.iter() {
-            let mut sorted_scrambled_signal: Vec<char> = scrambled_signal.chars().collect();
-            sorted_scrambled_signal.sort();
-            let sorted_scrambled_signal = String::from_iter(sorted_scrambled_signal);
-            match unique_lens.get(&scrambled_signal.len()) {
-                None => misses.push(scrambled_signal.to_string()),
-                Some(digit) => match &segment_map[*digit] {
-                    None => misses.push(scrambled_signal.to_string()),
-                    Some(sorted_scrambled_digit) => {known_sorted_signals.insert(sorted_scrambled_signal, sorted_scrambled_digit.clone());},
-                }
-            }
-        }
-        // Now find signals which have all of the chars of a known signal contained within. Partially fill a digit with them, and see if
-        // there is only 1 digit pattern that matches, if so, add it to the maps.
-        for round in 0..misses.len() {
-            let mut more_misses = Vec::new();
-            for scrambled_signal in misses.drain(..) {
-                let mut sorted_scrambled_signal: Vec<char> = scrambled_signal.chars().collect();
-                sorted_scrambled_signal.sort();
-                let sorted_scrambled_signal = String::from_iter(sorted_scrambled_signal);
-                let mut all_matches: Vec<(String, String)> = Vec::new();
-                let mut found = false;
-                println!("Walking through {:?}", known_sorted_signals);
-                for (sorted_known_signal, sorted_known_digit) in known_sorted_signals.iter() {
-                    if sorted_known_signal.chars().all(|c| sorted_scrambled_signal.contains(c)) {
-                        // Potential match! Find known digits which match this
-                        println!("all of {} are contained in {}", sorted_known_signal, sorted_scrambled_signal);
-                        let matches: Vec<String> = Vec::from(PATTERNS).iter()
-                            .map(|pattern| String::from(*pattern))
-                            .filter(|pattern| sorted_known_digit.chars().all(|c| pattern.contains(c)) && pattern.len() == scrambled_signal.len())
-                            .collect();
-                        if matches.len() == 1 {
-                            all_matches.push((sorted_scrambled_signal.clone(), matches[0].clone()));
-                            println!("Fist order match for [{}] {} with {}", scrambled_signal, sorted_scrambled_signal, sorted_known_digit);
-                            found = true;
-                            break;
-                        }
-                    }
-                    if sorted_scrambled_signal.chars().all(|c| sorted_known_signal.contains(c)) {
-                        // All of the chars in our signal, are in a known signal, so we can at least know all
-                        // of the digits that will light up. Let's see if *those* contain a known digit of the same length
-                        //println!("Second order match for {} on {} with {}", scrambled_signal, sorted_known_signal, sorted_known_digit);
-                        let matches: Vec<String> = Vec::from(PATTERNS).iter()
-                            .map(|pattern| String::from(*pattern))
-                            //.map(|pattern| { if pattern.len() == scrambled_signal.len() {println!("left = {} right = {}", pattern, sorted_known_digit)}; pattern})
-                            .filter(|pattern| pattern.len() == scrambled_signal.len() && pattern.chars().all(|c| sorted_known_digit.contains(c)))
-                            .collect();
-                        //println!("Matches = {:?}", matches);
-                        if matches.len() == 1 {
-                            println!("Found {} is the only one for {}", sorted_scrambled_signal, matches[0]);
-                            all_matches.push((sorted_scrambled_signal.clone(), matches[0].clone()));
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-                if !found {
-                    more_misses.push(scrambled_signal.clone())
-                }
-                for (p, v) in all_matches {
-                    known_sorted_signals.insert(p, v);
-                }
-            }
-            if more_misses.len() == 0 {
-                break
-            }
-            if scrambled_digits.clone().all(|scrambled_digit| 
-                {
-                    let mut sorted_scrambled_digit: Vec<char> = scrambled_digit.chars().collect();
-                    sorted_scrambled_digit.sort();
-                    let sorted_scrambled_digit = String::from_iter(sorted_scrambled_digit);
-                    println!("checking {}", sorted_scrambled_digit);
-                    known_sorted_signals.contains_key(&sorted_scrambled_digit)
-                }) {
-                println!("Found all necessary patterns! Still had {:?}", more_misses);
-                break
-            }
-            if more_misses.len() == 1 {
-                // There's only one left!
-                let found_patterns: HashSet<&String> = known_sorted_signals.values().collect();
-                let mut final_pattern = PATTERNS.iter().filter(|x| found_patterns.contains(&x.to_string())).map(|s| s.to_string());
-                known_sorted_signals.insert(more_misses.pop().unwrap(), final_pattern.next().unwrap());
-                break
-            }
-            println!("[{:?}] At round {} we have these misses: {:?}", misses, round, more_misses);
-            misses.extend(more_misses.clone());
-            more_misses.truncate(0);
-        }
-        println!("known_sorted-signals = {:?}", known_sorted_signals);
-        // Make the digits
-        let mut digit_total = 0;
-        let mut elevator:usize  = 1000;
-        let patterns = Vec::from(PATTERNS);
-        for scrambled_digit in scrambled_digits {
-            let digit_value = match unique_lens.get(&scrambled_digit.len()) {
-                None => {
-                    let mut sorted_scrambled_digit: Vec<char> = scrambled_digit.chars().collect();
-                    sorted_scrambled_digit.sort();
-                    let sorted_scrambled_digit = String::from_iter(sorted_scrambled_digit);
-                    // For first line, 0 instead of 9, so some inference is wrong
-                    let sorted_signal = known_sorted_signals.get(&sorted_scrambled_digit).unwrap();
-                    println!("Looking for [{}]{} in {:?}", scrambled_digit, sorted_signal, patterns);
-                    let pos = patterns.iter().position(|s| {println!("{} == {}", s, sorted_signal);s == &sorted_signal}).unwrap();
-                    println!("Found {}", pos);
-                    pos
-                },
-                Some(digit) => {
-                    println!("Known len for {} = {}", scrambled_digit, digit);
-                    *digit
-                },
-            };
-            digit_total += digit_value * elevator;
-            elevator = elevator / 10;
-        }
-        println!("final = {}", digit_total);
     }
+}
+
+
+fn validate_map(map: &HashMap<char, char>, patterns: &Vec<&str>, unique_lens: &HashMap<usize, usize>, signals: &Vec<&str>, digits: &Vec<&str>) -> bool {
+
+    // Do the signals all map to real digits?
+    for signal in signals.iter() {
+        let mut target = String::with_capacity(signal.len());
+        for c in signal.chars() {
+            target.push(*map.get(&c).unwrap());
+        }
+        if !patterns.iter().any(|pattern| pattern.chars().all(|c| target.contains(c))) {
+            println!("Nope: signal {} mapped to {} and doesn't match any patterns", signal, target);
+            return false
+        }
+    }
+    // Do the known digits come out right?
+    for digit in digits.iter() {
+        match unique_lens.get(&digit.len()) {
+            None => (),
+            Some(actual) => if !patterns[*actual].chars().all(|c| digit.contains(c)) {
+                return false
+            }
+        }
+    }
+    true
 }
