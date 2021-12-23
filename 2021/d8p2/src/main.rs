@@ -133,10 +133,10 @@ For each entry, determine all of the wire/segment connections and decode the fou
 use std::io;
 use std::collections::{HashMap, HashSet};
 
-use regex::Regex;
+//use regex::Regex;
 
 const PATTERNS: [&str;10] = ["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"];
-const N_SEGMENTS: usize = 7;
+//const N_SEGMENTS: usize = 7;
 
 fn main() {
     let mut unique_lens: HashMap<usize, usize> = HashMap::new();
@@ -187,16 +187,18 @@ fn main() {
                 let sorted_scrambled_signal = String::from_iter(sorted_scrambled_signal);
                 let mut all_matches: Vec<(String, String)> = Vec::new();
                 let mut found = false;
+                println!("Walking through {:?}", known_sorted_signals);
                 for (sorted_known_signal, sorted_known_digit) in known_sorted_signals.iter() {
-                    if sorted_known_digit.chars().all(|c| sorted_scrambled_signal.contains(c)) {
+                    if sorted_known_signal.chars().all(|c| sorted_scrambled_signal.contains(c)) {
                         // Potential match! Find known digits which match this
+                        println!("all of {} are contained in {}", sorted_known_signal, sorted_scrambled_signal);
                         let matches: Vec<String> = Vec::from(PATTERNS).iter()
                             .map(|pattern| String::from(*pattern))
                             .filter(|pattern| sorted_known_digit.chars().all(|c| pattern.contains(c)) && pattern.len() == scrambled_signal.len())
                             .collect();
                         if matches.len() == 1 {
                             all_matches.push((sorted_scrambled_signal.clone(), matches[0].clone()));
-                            //println!("Fist order match for {} with {}", scrambled_signal, sorted_known_digit);
+                            println!("Fist order match for [{}] {} with {}", scrambled_signal, sorted_scrambled_signal, sorted_known_digit);
                             found = true;
                             break;
                         }
@@ -212,7 +214,7 @@ fn main() {
                             .collect();
                         //println!("Matches = {:?}", matches);
                         if matches.len() == 1 {
-                            //println!("Found {} is the only one for {}", sorted_scrambled_signal, matches[0]);
+                            println!("Found {} is the only one for {}", sorted_scrambled_signal, matches[0]);
                             all_matches.push((sorted_scrambled_signal.clone(), matches[0].clone()));
                             found = true;
                             break;
@@ -227,6 +229,17 @@ fn main() {
                 }
             }
             if more_misses.len() == 0 {
+                break
+            }
+            if scrambled_digits.clone().all(|scrambled_digit| 
+                {
+                    let mut sorted_scrambled_digit: Vec<char> = scrambled_digit.chars().collect();
+                    sorted_scrambled_digit.sort();
+                    let sorted_scrambled_digit = String::from_iter(sorted_scrambled_digit);
+                    println!("checking {}", sorted_scrambled_digit);
+                    known_sorted_signals.contains_key(&sorted_scrambled_digit)
+                }) {
+                println!("Found all necessary patterns! Still had {:?}", more_misses);
                 break
             }
             if more_misses.len() == 1 {
@@ -251,11 +264,17 @@ fn main() {
                     let mut sorted_scrambled_digit: Vec<char> = scrambled_digit.chars().collect();
                     sorted_scrambled_digit.sort();
                     let sorted_scrambled_digit = String::from_iter(sorted_scrambled_digit);
+                    // For first line, 0 instead of 9, so some inference is wrong
                     let sorted_signal = known_sorted_signals.get(&sorted_scrambled_digit).unwrap();
-                    println!("Looking for {} in {:?}", sorted_signal, patterns);
-                    patterns.iter().position(|s| s == &sorted_signal).unwrap()
+                    println!("Looking for [{}]{} in {:?}", scrambled_digit, sorted_signal, patterns);
+                    let pos = patterns.iter().position(|s| {println!("{} == {}", s, sorted_signal);s == &sorted_signal}).unwrap();
+                    println!("Found {}", pos);
+                    pos
                 },
-                Some(digit) => *digit,
+                Some(digit) => {
+                    println!("Known len for {} = {}", scrambled_digit, digit);
+                    *digit
+                },
             };
             digit_total += digit_value * elevator;
             elevator = elevator / 10;
