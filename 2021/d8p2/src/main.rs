@@ -133,7 +133,7 @@ For each entry, determine all of the wire/segment connections and decode the fou
 use std::io;
 use std::collections::{HashMap, VecDeque};
 
-//use regex::Regex;
+use itertools::Itertools;
 
 const PATTERNS: [&str;10] = ["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"];
 const UNSCRAMBLED: &str = "abcdefg";
@@ -146,14 +146,12 @@ fn main() {
     unique_lens.insert(3, 7);
     unique_lens.insert(7, 8);
     let patterns = Vec::from(PATTERNS);
-    let mut shifted_maps: Vec<HashMap<char, char>> = Vec::with_capacity(N_SEGMENTS);
-    let mut scrambled: VecDeque<char> = UNSCRAMBLED.chars().collect();
-    for i in 0..N_SEGMENTS {
+    let mut shifted_maps: Vec<HashMap<char, char>> = Vec::with_capacity(N_SEGMENTS*N_SEGMENTS);
+    for p in UNSCRAMBLED.chars().permutations(N_SEGMENTS).unique().filter(|s| !s.iter().any(|c| s.iter().filter(|c2| *c2==c).count() > 1)) {   
         let mut map = HashMap::with_capacity(N_SEGMENTS);
-        scrambled.rotate_right(1);
-        println!("Iteration {} = {}", i, String::from_iter(scrambled.iter()));
+        println!("Iteration {}", String::from_iter(p.clone()));
         let mut unscrambled_walker = UNSCRAMBLED.chars();
-        for rotated_c in scrambled.iter() {
+        for rotated_c in p.iter() {
             map.insert(*rotated_c, unscrambled_walker.next().unwrap());
         }
         shifted_maps.push(map);
@@ -165,8 +163,7 @@ fn main() {
         let parts: Vec<&str> = inputline.split("|").collect();
         let signals: Vec<&str> = parts[0].trim().split(" ").collect();
         let scrambled_digits: Vec<&str> = parts[1].trim().split(" ").collect();
-        for (i, shifted_map) in shifted_maps.iter().enumerate() {
-            println!("Trying {}", i);
+        for shifted_map in shifted_maps.iter() {
             if validate_map(shifted_map, &patterns, &unique_lens, &signals, &scrambled_digits) {
                 println!("Huzzah!: {:?}", shifted_map);
             }
@@ -184,7 +181,6 @@ fn validate_map(map: &HashMap<char, char>, patterns: &Vec<&str>, unique_lens: &H
             target.push(*map.get(&c).unwrap());
         }
         if !patterns.iter().any(|pattern| pattern.chars().all(|c| target.contains(c))) {
-            println!("Nope: signal {} mapped to {} and doesn't match any patterns", signal, target);
             return false
         }
     }
