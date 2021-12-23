@@ -166,11 +166,31 @@ fn main() {
         for shifted_map in shifted_maps.iter() {
             if validate_map(shifted_map, &patterns, &unique_lens, &signals, &scrambled_digits) {
                 println!("Huzzah!: {:?}", shifted_map);
+                println!("Total = {}", digits_to_total(shifted_map, &patterns, &scrambled_digits))
             }
         }
     }
 }
 
+fn unscramble_digit(map: &HashMap<char, char>, digit: &str) -> String {
+    let mut unscrambled_digit = String::with_capacity(digit.len());
+    for c in digit.chars() {
+        unscrambled_digit.push(*map.get(&c).unwrap())
+    }
+    unscrambled_digit
+}
+
+fn digits_to_total(map: &HashMap<char, char>, patterns: &Vec<&str>, digits: &Vec<&str>) -> usize {
+    let mut elevator = 1000;
+    let mut total = 0;
+    for digit in digits.iter() {
+        let unscrambled_digit = unscramble_digit(map, digit);
+        let value = patterns.iter().position(|pattern| pattern.chars().collect::<Vec<char>>() == unscrambled_digit.chars().sorted().collect::<Vec<char>>()).unwrap();
+        total += value * elevator;
+        elevator = elevator / 10;
+    }
+    total
+}
 
 fn validate_map(map: &HashMap<char, char>, patterns: &Vec<&str>, unique_lens: &HashMap<usize, usize>, signals: &Vec<&str>, digits: &Vec<&str>) -> bool {
 
