@@ -163,10 +163,16 @@ fn main() {
         let parts: Vec<&str> = inputline.split("|").collect();
         let signals: Vec<&str> = parts[0].trim().split(" ").collect();
         let scrambled_digits: Vec<&str> = parts[1].trim().split(" ").collect();
+        let mut map_cache: HashMap<(Vec<char>, Vec<char>), bool> = HashMap::new();
         for shifted_map in shifted_maps.iter() {
-            if validate_map(shifted_map, &patterns, &unique_lens, &signals, &scrambled_digits) {
-                println!("Huzzah!: {:?}", shifted_map);
-                println!("Total = {}", digits_to_total(shifted_map, &patterns, &scrambled_digits))
+            let mapkeys = shifted_map.keys().map(|c| *c).collect::<Vec<char>>();
+            let mapvalues = shifted_map.values().map(|c| *c).collect::<Vec<char>>();
+            let mk = mapkeys.clone();
+            let mv = mapvalues.clone();
+            if *map_cache.entry((mapkeys, mapvalues)).or_insert(validate_map(shifted_map, &patterns, &unique_lens, &signals, &scrambled_digits)) {
+                let init = String::from("");
+                print!("Hit {}", mk.iter().fold(init, |started, key| format!("{}|{} => {}", started, key, shifted_map.get(key).unwrap())));
+                println!("    Total = {}", digits_to_total(shifted_map, &patterns, &scrambled_digits))
             }
         }
     }
@@ -193,7 +199,10 @@ fn digits_to_total(map: &HashMap<char, char>, patterns: &Vec<&str>, digits: &Vec
 }
 
 fn validate_map(map: &HashMap<char, char>, patterns: &Vec<&str>, unique_lens: &HashMap<usize, usize>, signals: &Vec<&str>, digits: &Vec<&str>) -> bool {
-
+    // Any signals not scrambled?
+    if map.iter().any(|(k,v)| k==v) {
+        return false
+    }
     // Do the signals all map to real digits?
     for signal in signals.iter() {
         let mut target = String::with_capacity(signal.len());
@@ -207,11 +216,21 @@ fn validate_map(map: &HashMap<char, char>, patterns: &Vec<&str>, unique_lens: &H
     // Do the known digits come out right?
     for digit in digits.iter() {
         match unique_lens.get(&digit.len()) {
-            None => (),
+            None => {
+                let mut target = String::with_capacity(digit.len());
+                for c in digit.chars() {
+                    target.push(*map.get(&c).unwrap());
+                }
+                if !patterns.iter().any(|pattern| pattern.chars().all(|c| target.contains(c))) {
+                    println!("digit {} does not map", digit);
+                    return false
+                }
+            },
             Some(actual) => if !patterns[*actual].chars().all(|c| digit.contains(c)) {
                 return false
             }
         }
     }
+
     true
 }
