@@ -130,12 +130,14 @@ For each entry, determine all of the wire/segment connections and decode the fou
 
 */
 #![feature(stdin_forwarders, int_abs_diff)]
+use std::collections::HashMap;
 use std::io;
-use std::collections::{HashMap, VecDeque};
 
 use itertools::Itertools;
 
-const PATTERNS: [&str;10] = ["abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg"];
+const PATTERNS: [&str; 10] = [
+    "abcefg", "cf", "acdeg", "acdfg", "bcdf", "abdfg", "abdefg", "acf", "abcdefg", "abcdfg",
+];
 const UNSCRAMBLED: &str = "abcdefg";
 const N_SEGMENTS: usize = 7;
 
@@ -146,10 +148,14 @@ fn main() {
     unique_lens.insert(3, 7);
     unique_lens.insert(7, 8);
     let patterns = Vec::from(PATTERNS);
-    let mut shifted_maps: Vec<HashMap<char, char>> = Vec::with_capacity(N_SEGMENTS*N_SEGMENTS);
-    for p in UNSCRAMBLED.chars().permutations(N_SEGMENTS).unique().filter(|s| !s.iter().any(|c| s.iter().filter(|c2| *c2==c).count() > 1)) {   
+    let mut shifted_maps: Vec<HashMap<char, char>> = Vec::with_capacity(N_SEGMENTS * N_SEGMENTS);
+    for p in UNSCRAMBLED
+        .chars()
+        .permutations(N_SEGMENTS)
+        .unique()
+        .filter(|s| !s.iter().any(|c| s.iter().filter(|c2| *c2 == c).count() > 1))
+    {
         let mut map = HashMap::with_capacity(N_SEGMENTS);
-        println!("Iteration {}", String::from_iter(p.clone()));
         let mut unscrambled_walker = UNSCRAMBLED.chars();
         for rotated_c in p.iter() {
             map.insert(*rotated_c, unscrambled_walker.next().unwrap());
@@ -157,6 +163,7 @@ fn main() {
         shifted_maps.push(map);
     }
     println!("Input notes:");
+    let mut final_total = 0;
     for inputline in io::stdin().lines() {
         let inputline = inputline.unwrap();
         println!("{}", inputline);
@@ -168,14 +175,34 @@ fn main() {
             let mapkeys = shifted_map.keys().map(|c| *c).collect::<Vec<char>>();
             let mapvalues = shifted_map.values().map(|c| *c).collect::<Vec<char>>();
             let mk = mapkeys.clone();
-            let mv = mapvalues.clone();
-            if *map_cache.entry((mapkeys, mapvalues)).or_insert(validate_map(shifted_map, &patterns, &unique_lens, &signals, &scrambled_digits)) {
+            if *map_cache
+                .entry((mapkeys, mapvalues))
+                .or_insert(validate_map(
+                    shifted_map,
+                    &patterns,
+                    &unique_lens,
+                    &signals,
+                    &scrambled_digits,
+                ))
+            {
                 let init = String::from("");
-                print!("Hit {}", mk.iter().fold(init, |started, key| format!("{}|{} => {}", started, key, shifted_map.get(key).unwrap())));
-                println!("    Total = {}", digits_to_total(shifted_map, &patterns, &scrambled_digits))
+                print!(
+                    "Hit {}",
+                    mk.iter().fold(init, |started, key| format!(
+                        "{}|{} => {}",
+                        started,
+                        key,
+                        shifted_map.get(key).unwrap()
+                    ))
+                );
+                let line_total = digits_to_total(shifted_map, &patterns, &scrambled_digits);
+                final_total += line_total;
+                println!(" = {}", line_total);
+                break;
             }
         }
     }
+    println!("Total for all = {}", final_total);
 }
 
 fn unscramble_digit(map: &HashMap<char, char>, digit: &str) -> String {
@@ -191,43 +218,56 @@ fn digits_to_total(map: &HashMap<char, char>, patterns: &Vec<&str>, digits: &Vec
     let mut total = 0;
     for digit in digits.iter() {
         let unscrambled_digit = unscramble_digit(map, digit);
-        let value = patterns.iter().position(|pattern| pattern.chars().collect::<Vec<char>>() == unscrambled_digit.chars().sorted().collect::<Vec<char>>()).unwrap();
+        let value = match patterns.iter().position(|pattern| {
+            pattern.chars().collect::<Vec<char>>()
+                == unscrambled_digit.chars().sorted().collect::<Vec<char>>()
+        }) {
+            None => panic!(
+                "digit = {} unscrambled_digit = {}",
+                digit,
+                unscrambled_digit.chars().sorted().collect::<String>()
+            ),
+            Some(value) => value,
+        };
         total += value * elevator;
         elevator = elevator / 10;
     }
     total
 }
 
-fn validate_map(map: &HashMap<char, char>, patterns: &Vec<&str>, unique_lens: &HashMap<usize, usize>, signals: &Vec<&str>, digits: &Vec<&str>) -> bool {
-    // Any signals not scrambled?
-    if map.iter().any(|(k,v)| k==v) {
-        return false
-    }
+fn validate_map(
+    map: &HashMap<char, char>,
+    patterns: &Vec<&str>,
+    unique_lens: &HashMap<usize, usize>,
+    signals: &Vec<&str>,
+    digits: &Vec<&str>,
+) -> bool {
     // Do the signals all map to real digits?
     for signal in signals.iter() {
-        let mut target = String::with_capacity(signal.len());
-        for c in signal.chars() {
-            target.push(*map.get(&c).unwrap());
-        }
-        if !patterns.iter().any(|pattern| pattern.chars().all(|c| target.contains(c))) {
-            return false
+        let target = unscramble_digit(map, signal);
+        if !patterns.iter().any(|pattern| {
+            pattern.len() == target.len() && pattern.chars().all(|c| target.contains(c))
+        }) {
+            return false;
         }
     }
     // Do the known digits come out right?
     for digit in digits.iter() {
+        let target = unscramble_digit(map, digit);
+
         match unique_lens.get(&digit.len()) {
             None => {
-                let mut target = String::with_capacity(digit.len());
-                for c in digit.chars() {
-                    target.push(*map.get(&c).unwrap());
+                if !patterns.iter().any(|pattern| {
+                    pattern.len() == target.len() && pattern.chars().all(|c| target.contains(c))
+                }) {
+                    return false;
                 }
-                if !patterns.iter().any(|pattern| pattern.chars().all(|c| target.contains(c))) {
-                    println!("digit {} does not map", digit);
-                    return false
+            }
+            Some(actual) => {
+                if !patterns[*actual].chars().all(|c| target.contains(c)) {
+                    println!("known digit {} not mapping here: {:?}", actual, map);
+                    return false;
                 }
-            },
-            Some(actual) => if !patterns[*actual].chars().all(|c| digit.contains(c)) {
-                return false
             }
         }
     }
