@@ -55,9 +55,25 @@ above, this is 24000 (carried by the fourth Elf).
 
 Find the Elf carrying the most Calories. How many total Calories is that Elf carrying?
 
+--- Part Two ---
+
+By the time you calculate the answer to the Elves' question, they've already realized that the Elf
+carrying the most Calories of food might eventually run out of snacks.
+
+To avoid this unacceptable situation, the Elves would instead like to know the total Calories
+carried by the top three Elves carrying the most Calories. That way, even if one of those Elves
+runs out of snacks, they still have two backups.
+
+In the example above, the top three Elves are the fourth Elf (with 24000 Calories), then the third
+Elf (with 11000 Calories), then the fifth Elf (with 10000 Calories). The sum of the Calories
+carried by these three elves is 45000.
+
+Find the top three Elves carrying the most Calories. How many Calories are those Elves carrying in
+total?
+
 */
 
-use std::fs;
+use std::{fs, collections::BinaryHeap};
 
 const TEST_INPUT: &str = "1000
 2000
@@ -123,8 +139,21 @@ fn test_hungriest_elf() {
     assert!(hungriest_elf(parse_calories(TEST_INPUT)) == 24000)
 }
 
+fn top_hungriest(elf_inventory: Vec<Vec<u32>>, ntop: usize) -> u32 {
+    let heap: BinaryHeap<u32> = BinaryHeap::from_iter(elf_inventory.iter()
+        .map(|this_elf| this_elf.iter().sum()));
+    return heap.iter().take(ntop).sum();
+}
+
+#[test]
+fn test_top_hungriest() {
+    assert!(top_hungriest(parse_calories(TEST_INPUT), 3) == 45000);
+}
+
 fn main() {
     let buf = fs::read_to_string("2022d1p1.txt").unwrap();
-    let hungriest = hungriest_elf(parse_calories(&buf));
+    let elf_inventory = parse_calories(&buf);
+    let hungriest = hungriest_elf(elf_inventory.clone());
     println!("The hungriest is {}", hungriest);
+    println!("The top 3 hungriest have {}", top_hungriest(elf_inventory, 3));
 }
