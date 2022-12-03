@@ -55,26 +55,27 @@ strategy guide?
 
 */
 
-use std::{fs, collections::BinaryHeap};
+use std::fs;
 
 const TEST_INPUT: &str = "A Y
 B X
 C Z";
 
-#[derive(Clone,PartialEq)]
+#[derive(Clone,Debug,PartialEq)]
 enum RPSPlay {
     Rock,
     Paper,
     Scissors,
 }
 
+#[derive(PartialEq, Debug)]
 enum RPSResult {
     Win,
     Lose,
     Draw,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 struct RPSRule {
     play: RPSPlay,
     score: usize,
@@ -82,17 +83,17 @@ struct RPSRule {
 }
 
 impl RPSRule {
-    fn result(self: &Self, other: RPSPlay) -> RPSResult {
-        if self.winner == other {
+    fn result(self: &Self, other: &RPSPlay) -> RPSResult {
+        if self.winner == *other {
             return RPSResult::Lose
         }
-        if self.play == other {
+        if self.play == *other {
             return RPSResult::Draw
         }
         return RPSResult::Win
     }
 
-    fn score(self: &Self, other: RPSPlay) -> usize {
+    fn score(self: &Self, other: &RPSPlay) -> usize {
         return match self.result(other) {
             RPSResult::Lose => 0,
             RPSResult::Win => 6,
@@ -104,7 +105,7 @@ impl RPSRule {
 static ROCK: RPSRule = RPSRule {
     play: RPSPlay::Rock,
     score: 1,
-    winner: RPSPlay::Scissors
+    winner: RPSPlay::Paper
 };
 static PAPER: RPSRule = RPSRule {
     play: RPSPlay::Paper,
@@ -139,6 +140,10 @@ fn parse_strategy_guide(input: &str) -> Vec<(&'static RPSRule, &'static RPSRule)
     parsed
 }
 
+fn score_guide(guide: Vec<(&'static RPSRule, &'static RPSRule)>) -> usize {
+    guide.iter().map(|(theirs, mine)| mine.score(&theirs.play)).sum()
+}
+
 #[test]
 fn test_parse_strategy_guide() {
     let test_guide: Vec<(&'static RPSRule, &'static RPSRule)> = vec![
@@ -147,9 +152,18 @@ fn test_parse_strategy_guide() {
         (&SCISSORS, &SCISSORS),
     ];
     let parsed_guide = parse_strategy_guide(TEST_INPUT);
-    assert!(test_guide == parsed_guide);
+    assert_eq!(test_guide, parsed_guide);
+    let (first_theirs, first_mine) = parsed_guide[0];
+    assert_eq!(first_mine.result(&first_theirs.play), RPSResult::Win);
+    assert_eq!(first_mine.score, 2);
+    assert_eq!(first_mine.score(&first_theirs.play), 8);
+    let (second_theirs, second_mind) = parsed_guide[1];
+    assert_eq!(second_mind.result(&second_theirs.play), RPSResult::Lose);
+    assert_eq!(second_mind.score(&second_theirs.play), 1);
+    assert_eq!(score_guide(parsed_guide), 15)
 }
 
 fn main() {
-    let buf = fs::read_to_string("2022d1p1.txt").unwrap();
+    let buf = fs::read_to_string("2022d2p1.txt").unwrap();
+    println!("The total score for this guide played perfectly would be: {}", score_guide(parse_strategy_guide(&buf)));
 }
