@@ -76,6 +76,13 @@ fn parse_sections(input: &str) -> Result<Vec<((i32, i32), (i32, i32))>, ParseInt
     Ok(parsed)
 }
 
+fn count_overlaps(sections: Vec<((i32,i32),(i32,i32))>) -> i32 {
+    sections.iter()
+        .fold(0, |n, ((lmin, lmax),(rmin, rmax))| {
+           n + ((rmin <= lmin && rmax >= lmax) || (lmin <= rmin && lmax >= rmax)) as i32 
+        })
+}
+
 #[test]
 fn test_inventory() {
     let test_sections: Vec<((i32, i32),(i32,i32))> = vec![
@@ -88,6 +95,7 @@ fn test_inventory() {
     ];
     let parsed_sections = parse_sections(TEST_INPUT).unwrap();
     assert_eq!(test_sections, parsed_sections);
+    assert_eq!(2, count_overlaps(parsed_sections));
 }
 
 fn main() {
