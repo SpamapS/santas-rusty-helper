@@ -100,5 +100,6 @@ fn test_inventory() {
 
 fn main() {
     let buf = fs::read_to_string("2022d4p1.txt").unwrap();
-    let parsed_sections = parse_sections(&buf);
+    let parsed_sections = parse_sections(&buf).unwrap();
+    println!("There are {} fully overlapping pairs of sections.", count_overlaps(parsed_sections));
 }
