@@ -44,6 +44,22 @@ Some of the pairs have noticed that one of their assignments fully contains the 
 
 In how many assignment pairs does one range fully contain the other?
 
+--- Part Two ---
+
+It seems like there is still quite a bit of duplicate work planned. Instead, the Elves would like to know the number of pairs that overlap at all.
+
+In the above example, the first two pairs (2-4,6-8 and 2-3,4-5) don't overlap, while the remaining four pairs (5-7,7-9, 2-8,3-7, 6-6,4-6, and 2-6,4-8) do overlap:
+
+    5-7,7-9 overlaps in a single section, 7.
+    2-8,3-7 overlaps all of the sections 3 through 7.
+    6-6,4-6 overlaps in a single section, 6.
+    2-6,4-8 overlaps in sections 4, 5, and 6.
+
+So, in this example, the number of overlapping assignment pairs is 4.
+
+In how many assignment pairs do the ranges overlap?
+
+
 
 */
 
@@ -79,7 +95,7 @@ fn parse_sections(input: &str) -> Result<Vec<((i32, i32), (i32, i32))>, ParseInt
 fn count_overlaps(sections: Vec<((i32,i32),(i32,i32))>) -> i32 {
     sections.iter()
         .fold(0, |n, ((lmin, lmax),(rmin, rmax))| {
-           n + ((rmin <= lmin && rmax >= lmax) || (lmin <= rmin && lmax >= rmax)) as i32 
+           n + ((lmin >= rmin && lmin <= rmax) || (rmin >= lmin && rmin <= lmax)) as i32
         })
 }
 
@@ -95,11 +111,11 @@ fn test_inventory() {
     ];
     let parsed_sections = parse_sections(TEST_INPUT).unwrap();
     assert_eq!(test_sections, parsed_sections);
-    assert_eq!(2, count_overlaps(parsed_sections));
+    assert_eq!(4, count_overlaps(parsed_sections));
 }
 
 fn main() {
     let buf = fs::read_to_string("2022d4p1.txt").unwrap();
     let parsed_sections = parse_sections(&buf).unwrap();
-    println!("There are {} fully overlapping pairs of sections.", count_overlaps(parsed_sections));
+    println!("There are {} overlapping pairs of sections.", count_overlaps(parsed_sections));
 }
