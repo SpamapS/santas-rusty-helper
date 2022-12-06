@@ -97,7 +97,6 @@ fn parse_drawing(input: &str) -> Result<(Vec<Stack>, Vec<Instruction>), ParseInt
     let mut stacks: Vec<Stack> = Vec::new();
     let two_halves: Vec<&str> = input.split("\n\n").collect();
     let stack_string = two_halves[0];
-    let instr_string = two_halves[1];
     // Reverse so column #'s are first
     let crate_re = Regex::new(r"(\[[A-Z]\])(?:\s|$)").unwrap();
     for line in stack_string.lines().rev() {
@@ -105,7 +104,6 @@ fn parse_drawing(input: &str) -> Result<(Vec<Stack>, Vec<Instruction>), ParseInt
             continue;
         }
         for cr in crate_re.find_iter(line) {
-            println!("{:?} - {:?}", cr, cr.as_str());
             let col = cr.start() / 4;
             let crate_char = cr.as_str().chars().nth(1).expect("Should have a char here");
             loop {
@@ -118,7 +116,20 @@ fn parse_drawing(input: &str) -> Result<(Vec<Stack>, Vec<Instruction>), ParseInt
             stacks[col].push(crate_char);
         }
     }
+    let instr_string = two_halves[1];
     let mut instructions = Vec::new();
+    let instr_re = Regex::new(r"^move (\d+) from (\d+) to (\d+)$").unwrap();
+    for line in instr_string.lines() {
+        let m = instr_re.captures(line).expect("Instruction line won't parse");
+        let n: i32 = m.get(1).unwrap().as_str().parse().unwrap();
+        let from: i32 = m.get(2).unwrap().as_str().parse().unwrap();
+        let to: i32 = m.get(3).unwrap().as_str().parse().unwrap();
+        instructions.push(Instruction {
+            n,
+            from,
+            to,
+        });
+    }
     Ok((stacks, instructions))
 }
 
