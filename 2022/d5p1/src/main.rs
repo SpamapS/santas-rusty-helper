@@ -133,6 +133,15 @@ fn parse_drawing(input: &str) -> Result<(Vec<Stack>, Vec<Instruction>), ParseInt
     Ok((stacks, instructions))
 }
 
+fn apply_instructions(stacks: &mut Vec<Stack>, instructions: &Vec<Instruction>) {
+    for instruction in instructions.iter() {
+        for _i in 0..instruction.n {
+            let this_crate: Crate = stacks[instruction.from as usize - 1].pop().expect("Not enough items to move!");
+            stacks[instruction.to as usize - 1].push(this_crate);
+        }
+    }
+}
+
 #[test]
 fn test_instructions() {
     let mut test_stacks: Vec<Stack> = Vec::new();
@@ -146,11 +155,20 @@ fn test_instructions() {
         Instruction { n: 1, from: 1, to: 2},
     ];
     let test_stacks = test_stacks;
-    let (parsed_stacks, instructions) = parse_drawing(TEST_INPUT).unwrap();
+    let (mut parsed_stacks, instructions) = parse_drawing(TEST_INPUT).unwrap();
     assert_eq!(test_stacks, parsed_stacks);
     assert_eq!(test_instructions, instructions);
+    let mut moved_test_stacks: Vec<Stack> = Vec::new();
+    moved_test_stacks.push(vec!['C']);
+    moved_test_stacks.push(vec!['M']);
+    moved_test_stacks.push(vec!['P', 'D', 'N', 'Z']);
+    apply_instructions(&mut parsed_stacks, &instructions);
+    assert_eq!(moved_test_stacks, parsed_stacks);
 }
 
 fn main() {
-    let buf = fs::read_to_string("2022d4p1.txt").unwrap();
+    let buf = fs::read_to_string("2022d5p1.txt").unwrap();
+    let (mut parsed_stacks, instructions) = parse_drawing(&buf).unwrap();
+    apply_instructions(&mut parsed_stacks, &instructions);
+    println!("The answer is: {}", parsed_stacks.iter_mut().map(|stack| stack.pop().unwrap()).collect::<String>());
 }
