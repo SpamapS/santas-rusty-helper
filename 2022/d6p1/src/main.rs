@@ -48,19 +48,26 @@ fn has_dupes(input: &str) -> bool {
     return false
 }
 
-fn find_start_packet(input: &str) -> usize {
-    let mut window = &input[0..4];
+fn find_undup_packet(input: &str, winsize: usize) -> usize {
+    let mut window = &input[0..winsize];
     let mut at = 0;
     for (pos, _c) in input.chars().enumerate() {
         if !has_dupes(window) {
             break;
         }
-        at = pos + 4;
+        at = pos + winsize;
         window = &input[pos..at];
     }
     at
 }
 
+fn find_start_packet(input: &str) -> usize {
+    find_undup_packet(input, 4)
+}
+
+fn find_start_message(input: &str) -> usize {
+    find_undup_packet(input, 14)
+}
 
 #[test]
 fn test_signals() {
@@ -68,9 +75,14 @@ fn test_signals() {
     assert_eq!(find_start_packet("nppdvjthqldpwncqszvftbrmjlhg"), 6);
     assert_eq!(find_start_packet("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg"), 10);
     assert_eq!(find_start_packet("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw"), 11);
+    assert_eq!(find_start_message("bvwbjplbgvbhsrlpgdmjqwftvncz"), 23);
+    assert_eq!(find_start_message("nppdvjthqldpwncqszvftbrmjlhg"), 23);
+    assert_eq!(find_start_message("nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg"), 29);
+    assert_eq!(find_start_message("zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw"), 26);
 }
 
 fn main() {
     let buf = fs::read_to_string("2022d6p1.txt").unwrap();
-    println!("Position for input is: {}", find_start_packet(&buf));
+    println!("Position for packet is: {}", find_start_packet(&buf));
+    println!("Position for message is: {}", find_start_message(&buf));
 }
