@@ -69,6 +69,79 @@ fn parse_grid(input: &str) -> Grove {
     }
 }
 
+const LEFT: (isize,isize) = (-1,0);
+const RIGHT: (isize,isize) = (1, 0);
+const UP: (isize,isize) = (0, -1);
+const DOWN: (isize,isize) = (0, 1);
+
+impl Grove {
+    fn get_tree(&self, x: usize, y:usize) -> u8 {
+        return self.grid[y*self.width+x]
+    }
+
+    fn is_visible(&self, x: usize, y:usize) -> bool {
+        let this_tree = self.get_tree(x,y);
+        // left
+        let mut left_visible = true;
+        for look_x in (0..=x-1).rev() {
+            if self.get_tree(look_x, y) >= this_tree {
+                left_visible = false;
+                break
+            }
+        }
+        // right
+        let mut right_visible = true;
+        for look_x in x+1..self.width {
+            if self.get_tree(look_x, y) >= this_tree {
+                right_visible = false;
+                break;
+            }
+        }
+        // up
+        let mut up_visible = true;
+        for look_y in (0..=y-1).rev() {
+            if self.get_tree(x, look_y) >= this_tree {
+                up_visible = false;
+                break;
+            }
+        }
+        // down
+        let mut down_visible = true;
+        for look_y in y+1..self.height {
+            if self.get_tree(x, look_y) >= this_tree {
+                down_visible = false;
+                break;
+            }
+        }
+        left_visible | right_visible | up_visible | down_visible
+    }
+
+    fn visible_trees(&self) -> usize {
+        // Count the outer most ring
+        let visible_trees = (2*self.width) + (2*(self.height-2));
+        // starting at the next inner ring
+        // for each ring up to ring #10
+        for ring in 1..9 {
+            let mut x = ring;
+            let mut y = ring;
+        //   for each tree moving clockwise through the ring
+            //  first row
+            for x_offset in 0..self.width -1 - (ring*2) {
+                self.is_visible(x+x_offset, y);
+            }
+        //     for direction in left,right,up,down
+        //       if tree_blocked
+        //         break
+        //       for i in ring..edge
+        //         if tree_in_direction >= this tree
+        //           tree_blocked = true
+        //           break
+        //     if !tree_blocked then increment visible_trees
+        }
+        visible_trees
+    }
+}
+
 #[test]
 fn test_parse_grid() {
     let test_input = "30373
@@ -93,6 +166,16 @@ fn test_parse_grid() {
     let parsed_grove = parse_grid(test_input);
     println!("{:?}", parsed_grove);
     assert_eq!(test_grove, parsed_grove);
+    assert!(parsed_grove.is_visible(1,1));
+    assert!(parsed_grove.is_visible(2,1));
+    assert!(!parsed_grove.is_visible(3,1));
+    assert!(parsed_grove.is_visible(1,2));
+    assert!(!parsed_grove.is_visible(2,2));
+    assert!(parsed_grove.is_visible(3,2));
+    assert!(parsed_grove.is_visible(2,3));
+    assert!(!parsed_grove.is_visible(1,3));
+    assert!(!parsed_grove.is_visible(3,3));
+    assert_eq!(21, parsed_grove.visible_trees());
 }
 
 fn main() {
