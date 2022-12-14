@@ -80,10 +80,29 @@ To begin, find all of the directories with a total size of at most 100000, then 
 
 Find all of the directories with a total size of at most 100000. What is the sum of the total sizes of those directories?
 
+--- Part Two ---
+
+Now, you're ready to choose a directory to delete.
+
+The total disk space available to the filesystem is 70000000. To run the update, you need unused space of at least 30000000. You need to find a directory you can delete that will free up enough space to run the update.
+
+In the example above, the total size of the outermost directory (and thus the total amount of used space) is 48381165; this means that the size of the unused space must currently be 21618835, which isn't quite the 30000000 required by the update. Therefore, the update still requires a directory with total size of at least 8381165 to be deleted before it can run.
+
+To achieve this, you have the following options:
+
+    Delete directory e, which would increase unused space by 584.
+    Delete directory a, which would increase unused space by 94853.
+    Delete directory d, which would increase unused space by 24933642.
+    Delete directory /, which would increase unused space by 48381165.
+
+Directories e and a are both too small; deleting them would not free up enough space. However, directories d and / are both big enough! Between these, choose the smallest: d, increasing unused space by 24933642.
+
+Find the smallest directory that, if deleted, would free up enough space on the filesystem to run the update. What is the total size of that directory?
+
 
 */
 
-use std::{fs, path::{PathBuf, Path}, collections::HashMap};
+use std::{fs, path::{PathBuf, Path}, collections::{HashMap, BinaryHeap}, cmp::Reverse};
 
 const CD: &'static str = "$ cd ";
 const LS: &'static str = "$ ls";
@@ -178,6 +197,9 @@ $ ls
     assert_eq!(48381165, *sums.get("/").unwrap());
 }
 
+const TOTAL_SPACE: usize = 70000000;
+const NEEDED_SPACE: usize = 30000000;
+
 fn main() {
     let buf = fs::read_to_string("2022d7p1.txt").unwrap();
     let mut cwd = PathBuf::from("/");
@@ -185,5 +207,10 @@ fn main() {
     let summed_dirs = sum_dirs(&parsed_cmds);
     summed_dirs.iter().filter(|(_dir, size)| **size <= 100000).for_each(|(dir, size)| println!("Remove {} which has size {}", dir, size));
     println!("The total is: {}", summed_dirs.iter().filter(|(dir, size)| **size <= 100000 && **dir != "/").fold(0, |t, (_dir, size)| t + size));
-
+    let total_used = summed_dirs.get("/").unwrap();
+    let unused_space = TOTAL_SPACE - total_used;
+    let at_least = NEEDED_SPACE - unused_space;
+    let mut suitable_dirs: BinaryHeap<Reverse<usize>> = summed_dirs.iter().map(|(_dir, size)| *size).filter(|size| *size > at_least).map(Reverse).collect();
+    let target_size: Reverse<usize> = suitable_dirs.pop().unwrap();
+    println!("Removing {:?} bytes", target_size);
 }
