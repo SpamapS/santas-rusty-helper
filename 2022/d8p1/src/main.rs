@@ -34,7 +34,7 @@ Consider your map; how many trees are visible from outside the grid?
 
 */
 
-use std::{fs, cmp::max, fmt::{Formatter, Error, self}};
+use std::{fs, cmp::max, fmt::{Formatter, Error, self}, collections::{HashMap, hash_map::{OccupiedEntry, VacantEntry}}};
 
 #[derive(PartialEq)]
 struct Grove {
@@ -53,7 +53,7 @@ impl fmt::Debug for Grove {
     }
 }
 
-fn parse_grid(input: &str) -> Grove {
+fn parse_grove(input: &str) -> Grove {
     let mut grid: Vec<u8> = Vec::new();
     let mut height = 0;
     let mut width = 0;
@@ -80,6 +80,7 @@ impl Grove {
     }
 
     fn is_visible(&self, x: usize, y:usize) -> bool {
+        // println!("Checking ({},{})", x, y);
         let this_tree = self.get_tree(x,y);
         // left
         let mut left_visible = true;
@@ -118,27 +119,47 @@ impl Grove {
 
     fn visible_trees(&self) -> usize {
         // Count the outer most ring
-        let visible_trees = (2*self.width) + (2*(self.height-2));
+        let mut outer_visible_trees = (2*self.width) + (2*(self.height-2));
+        let mut visible_trees: HashMap<(usize,usize), bool> = HashMap::with_capacity(self.grid.len());
         // starting at the next inner ring
-        // for each ring up to ring #10
-        for ring in 1..9 {
+        // for each ring
+        for ring in 1..=self.width / 2 {
             let mut x = ring;
             let mut y = ring;
         //   for each tree moving clockwise through the ring
             //  first row
-            for x_offset in 0..self.width -1 - (ring*2) {
-                self.is_visible(x+x_offset, y);
+            let x_bound = self.width - (ring * 2);
+            let y_bound = self.height - (ring * 2);
+            println!("ring = {} x_bound = {} y_bound = {}", ring, x_bound, y_bound);
+            for x_offset in 0..x_bound {
+                let pos = (x+x_offset, y);
+                visible_trees.entry(pos)
+                        .and_modify(|value| println!("Encountered {:?} another time = {}", pos, value))
+                        .or_insert(self.is_visible(pos.0, pos.1));
             }
-        //     for direction in left,right,up,down
-        //       if tree_blocked
-        //         break
-        //       for i in ring..edge
-        //         if tree_in_direction >= this tree
-        //           tree_blocked = true
-        //           break
-        //     if !tree_blocked then increment visible_trees
+            // println!("Right column");
+            for y_offset in 1..y_bound {
+                let pos = (x+x_bound-1, y+y_offset);
+                visible_trees.entry(pos)
+                    .and_modify(|value| println!("Encountered {:?} another time = {}", pos, value))
+                    .or_insert(self.is_visible(pos.0, pos.1));
+            }
+            // println!("Bottom Row");
+            for x_offset in 0..x_bound-1 {
+                let pos = (x+x_offset, y+y_bound-1);
+                visible_trees.entry(pos)
+                    .and_modify(|value| println!("Encountered {:?} another time = {}", pos, value))
+                    .or_insert(self.is_visible(pos.0, pos.1));
+            }
+            // println!("Left Column");
+            for y_offset in 1..y_bound-1 {
+                let pos = (x, y+y_offset);
+                visible_trees.entry(pos)
+                    .and_modify(|value| println!("Encountered {:?} another time = {}", pos, value))
+                    .or_insert(self.is_visible(pos.0, pos.1));
+            }
         }
-        visible_trees
+        visible_trees.iter().filter(|(_k, v)| **v).count() + outer_visible_trees
     }
 }
 
@@ -163,7 +184,7 @@ fn test_parse_grid() {
         width,
         grid,
     };
-    let parsed_grove = parse_grid(test_input);
+    let parsed_grove = parse_grove(test_input);
     println!("{:?}", parsed_grove);
     assert_eq!(test_grove, parsed_grove);
     assert!(parsed_grove.is_visible(1,1));
@@ -180,4 +201,5 @@ fn test_parse_grid() {
 
 fn main() {
     let buf = fs::read_to_string("2022d8p1.txt").unwrap();
+    println!("Grove has {} visible trees.", parse_grove(&buf).visible_trees());
 }
