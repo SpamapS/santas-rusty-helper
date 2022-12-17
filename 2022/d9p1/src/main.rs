@@ -390,6 +390,9 @@ fn test_coordinates_orientation()
     assert_eq!(Direction::Left, left.orientation(right));
     assert_eq!(Direction::Up, up.orientation(down));
     assert_eq!(Direction::Down, down.orientation(up));
+    let downleft = Coordinates{x:-1,y:-1};
+    let upright = Coordinates{x:1,y:1};
+    assert_eq!(Direction::DownLeft, downleft.orientation(upright));
 }
 
 fn parse_instructions(input: &str) -> Vec<Coordinates> {
