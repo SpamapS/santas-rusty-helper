@@ -275,21 +275,15 @@ impl Rope {
 
     fn adjust(&mut self, adjustment: Adjustment) {
         for i in 0..adjustment.distance {
-            // Which way is the tail going to move?
-            /*let tail_direction = match self.head.orientation(self.tail) {
-                Direction::None => Direction::None, // Tail does not need to move
-                Direction::Up => Direction::Up,
-                Direction::Down => Direction::Down,
-
-            };*/
             self.head.step(adjustment.direction);
-
+            self.tail.step(self.head.pull(self.tail));
+            self.tail_positions.insert(self.tail);
         }
     }
 }
 
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Coordinates {
     x: isize,
     y: isize,
@@ -311,7 +305,7 @@ impl Coordinates {
     }
 
     /* Returns the direction other would need to move to get closer to self */
-    fn orientation(&self, other: Coordinates) -> Direction {
+    fn pull(&self, other: Coordinates) -> Direction {
         let x = self.x - other.x;
         let y = self.y - other.y;
         if x == 0 && y == 0 {
@@ -362,41 +356,80 @@ struct Adjustment {
 }
 
 #[test]
-fn test_coordinates_orientation()
+fn test_coordinates_pull()
 {
     let middle = Coordinates{x: 0, y: 0};
     let middle2 = Coordinates{x: 0, y: 0};
-    assert_eq!(Direction::None, middle.orientation(middle2));
-    assert_eq!(Direction::None, middle2.orientation(middle));
+    assert_eq!(Direction::None, middle.pull(middle2));
+    assert_eq!(Direction::None, middle2.pull(middle));
     let right = Coordinates{x:1, y: 0};
-    assert_eq!(Direction::Left, middle.orientation(right));
-    assert_eq!(Direction::Right, right.orientation(middle));
+    assert_eq!(Direction::Left, middle.pull(right));
+    assert_eq!(Direction::Right, right.pull(middle));
     let left = Coordinates{x:-1, y:0};
-    assert_eq!(Direction::Right, middle.orientation(left));
-    assert_eq!(Direction::Left, left.orientation(middle));
+    assert_eq!(Direction::Right, middle.pull(left));
+    assert_eq!(Direction::Left, left.pull(middle));
     let down = Coordinates{x:0, y:-1};
-    assert_eq!(Direction::Up, middle.orientation(down));
-    assert_eq!(Direction::Down, down.orientation(middle));
+    assert_eq!(Direction::Up, middle.pull(down));
+    assert_eq!(Direction::Down, down.pull(middle));
     let up = Coordinates{x:0, y:1};
-    assert_eq!(Direction::Down, middle.orientation(up));
-    assert_eq!(Direction::Up, up.orientation(middle));
+    assert_eq!(Direction::Down, middle.pull(up));
+    assert_eq!(Direction::Up, up.pull(middle));
     // Diagonals
-    assert_eq!(Direction::UpLeft, left.orientation(down));
-    assert_eq!(Direction::DownRight, down.orientation(left));
-    assert_eq!(Direction::UpRight, right.orientation(down));
-    assert_eq!(Direction::DownLeft, down.orientation(right));
+    assert_eq!(Direction::UpLeft, left.pull(down));
+    assert_eq!(Direction::DownRight, down.pull(left));
+    assert_eq!(Direction::UpRight, right.pull(down));
+    assert_eq!(Direction::DownLeft, down.pull(right));
     // > 1 distance
-    assert_eq!(Direction::Right, right.orientation(left));
-    assert_eq!(Direction::Left, left.orientation(right));
-    assert_eq!(Direction::Up, up.orientation(down));
-    assert_eq!(Direction::Down, down.orientation(up));
+    assert_eq!(Direction::Right, right.pull(left));
+    assert_eq!(Direction::Left, left.pull(right));
+    assert_eq!(Direction::Up, up.pull(down));
+    assert_eq!(Direction::Down, down.pull(up));
     let downleft = Coordinates{x:-1,y:-1};
     let upright = Coordinates{x:1,y:1};
-    assert_eq!(Direction::DownLeft, downleft.orientation(upright));
+    assert_eq!(Direction::DownLeft, downleft.pull(upright));
+    let head = Coordinates{x: 2, y: 0};
+    let tail = Coordinates{x: 0, y: 0};
+    assert_eq!(Direction::Right, head.pull(tail));
+    /*
+    3T--
+    2-*-
+    1-H-
+    0123
+    */
+    assert_eq!(Direction::DownRight, head.pull(Coordinates{x:1, y: 3}));
+     /*
+    3--T
+    2-*-
+    1-H-
+    0123
+    */
+    assert_eq!(Direction::DownLeft, head.pull(Coordinates{x:3, y:3}));
+    let head = Coordinates{x:3, y:3};
+    assert_eq!(Direction::UpRight, head.pull(Coordinates{x:2, y:1}));
+    let head = Coordinates{x:1, y:3};
+     /*
+    3H--
+    2*--
+    1-T-
+    0123
+    */
+    assert_eq!(Direction::UpLeft, head.pull(Coordinates{x:2, y:1}));
 }
 
-fn parse_instructions(input: &str) -> Vec<Coordinates> {
-    let coords = Vec::new();
+fn parse_instructions(input: &str) -> Vec<Adjustment> {
+    let mut coords = Vec::new();
+    for (dir, distance) in input.lines().map(|line| line.split_once(' ').expect("No space in line")) {
+        coords.push(Adjustment{
+            direction: match dir {
+                "U" => Direction::Up,
+                "D" => Direction::Down,
+                "L" => Direction::Left,
+                "R" => Direction::Right,
+                _ => panic!("Could not parse a direction!"),
+            },
+            distance: distance.parse().expect("Couldn't parse digit")
+        });
+    }
     coords
 }
 
@@ -411,15 +444,21 @@ D 1
 L 5
 R 2";
     let test_instructions = vec![
-        Coordinates{x: 0, y: -4},
-        Coordinates{x: -3, y: 0},
-        Coordinates{x: 0, y: 1},
-        Coordinates{x: 4, y: 0},
-        Coordinates{x: 0, y: 1},
-        Coordinates{x: -5, y: 0},
-        Coordinates{x: 2, y: 0},
+        Adjustment{direction: Direction::Right, distance: 4},
+        Adjustment{direction: Direction::Up, distance: 4},
+        Adjustment{direction: Direction::Left, distance: 3},
+        Adjustment{direction: Direction::Down, distance: 1},
+        Adjustment{direction: Direction::Right, distance: 4},
+        Adjustment{direction: Direction::Down, distance: 1},
+        Adjustment{direction: Direction::Left, distance: 5},
+        Adjustment{direction: Direction::Right, distance: 2},
     ];
-    assert_eq!(test_instructions, parse_instructions(&test_input));
+    let parsed_instructions = parse_instructions(&test_input);
+    assert_eq!(test_instructions, parsed_instructions);
+    let mut rope = Rope::new();
+    parsed_instructions.iter().for_each(|adjustment| rope.adjust(*adjustment));
+    assert_eq!(13, rope.tail_positions.len());
+    
 }
 
 fn main() {
