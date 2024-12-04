@@ -45,11 +45,34 @@ use std::{
 
 pub fn day2(path: Option<PathBuf>) {
     let nums = parse(path);
-    println!("nums = {:?}", nums);
     println!(
-        "{} are safe",
+        "{} are safe without dampener",
         nums.iter().filter(|&report| issafe(report)).count()
     );
+    println!(
+        "{} are safe with dampener",
+        nums.iter()
+            .filter(|&report| dampener_issafe(report))
+            .count()
+    );
+}
+
+fn dampener_issafe(report: &Vec<i32>) -> bool {
+    if issafe(report) {
+        println!("no dampener required");
+        return true;
+    }
+    (0..report.len()).any(|i| {
+        println!("  checking {:?} without {i}", report);
+        issafe(
+            &report
+                .iter()
+                .enumerate()
+                .filter(|(offset, _level)| *offset != i)
+                .map(|(_offset, level)| *level)
+                .collect(),
+        )
+    })
 }
 
 fn issafe(report: &Vec<i32>) -> bool {
