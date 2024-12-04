@@ -46,9 +46,63 @@ use std::{
 pub fn day2(path: Option<PathBuf>) {
     let nums = parse(path);
     println!("nums = {:?}", nums);
+    println!(
+        "{} are safe",
+        nums.iter().filter(|&report| issafe(report)).count()
+    );
 }
 
-fn parse(path: Option<PathBuf>) -> Vec<Vec<u32>> {
+fn issafe(report: &Vec<i32>) -> bool {
+    struct Track {
+        last: Option<i32>,
+        last_diff: Option<i32>,
+    }
+    let acc = Track {
+        last: None,
+        last_diff: None,
+    };
+    report
+        .iter()
+        .scan(acc, |acc, level| match acc.last {
+            None => {
+                acc.last = Some(*level);
+                Some(level)
+            }
+            Some(last) => {
+                acc.last = Some(*level);
+                let diff: i32 = (last - level).try_into().unwrap();
+                if diff.abs() > 3 {
+                    println!("{last} to {level} not safe because spike ({diff})");
+                    None
+                } else {
+                    match acc.last_diff {
+                        None => {
+                            acc.last_diff = Some(diff);
+                            println!("{last} to {level} safe because no previous ");
+                            Some(level)
+                        }
+                        Some(last_diff) => {
+                            acc.last_diff = Some(diff);
+                            if last_diff < 0 && diff < 0 {
+                                println!("{last} to {level} safe because both diffs negative {last_diff} -> {diff}");
+                                Some(level)
+                            } else if last_diff > 0 && diff > 0 {
+                                println!("{last} to {level} safe because both diffs positive {last_diff} -> {diff}");
+                                Some(level)
+                            } else {
+                                println!("{last} to {level} not safe because wrong direction? {last_diff} -> {diff}");
+                                None
+                            }
+                        }
+                    }
+                }
+            }
+        })
+        .count()
+        == report.len()
+}
+
+fn parse(path: Option<PathBuf>) -> Vec<Vec<i32>> {
     let input = match path {
         None => File::open("day2test.txt"),
         Some(path) => File::open(path),
@@ -61,7 +115,7 @@ fn parse(path: Option<PathBuf>) -> Vec<Vec<u32>> {
             let binding = line.expect("File should be text with EOLs");
             let parts = binding.split(" ");
             parts
-                .map(|p| p.parse::<u32>().expect("all parts should be ints"))
+                .map(|p| p.parse::<i32>().expect("all parts should be ints"))
                 .collect()
         })
         .collect()

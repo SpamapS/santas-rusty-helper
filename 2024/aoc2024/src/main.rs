@@ -37,6 +37,7 @@ fn main() {
         }
         Some(Commands::Day2 {}) => {
             day2::day2(None);
+            day2::day2(Some("2024d2p1.txt".into()));
         }
         None => {}
     }
