@@ -83,7 +83,7 @@ use std::{
 };
 
 fn day1p1(nums: &Vec<(u32, u32)>) {
-    let mut lefts: BinaryHeap<_> = nums
+    let lefts: BinaryHeap<_> = nums
         .iter()
         .map(|(left, _right)| *left)
         .map(Reverse)
