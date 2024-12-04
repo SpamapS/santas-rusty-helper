@@ -1,4 +1,5 @@
 pub mod day1;
+pub mod day2;
 
 use clap::{Parser, Subcommand};
 
@@ -16,6 +17,7 @@ struct Cli {
 enum Commands {
     /// does day1 things
     Day1 {},
+    Day2 {},
 }
 
 fn main() {
@@ -32,6 +34,9 @@ fn main() {
         Some(Commands::Day1 {}) => {
             day1::day1(None);
             day1::day1(Some("2024d1p1.txt".into()));
+        }
+        Some(Commands::Day2 {}) => {
+            day2::day2(None);
         }
         None => {}
     }
