@@ -78,9 +78,10 @@ use std::{
     cmp::{max, min, Reverse},
     collections::{BinaryHeap, HashMap},
     fs::File,
-    io::{self, BufRead},
     path::PathBuf,
 };
+
+use crate::util::parse_file;
 
 fn day1p1(nums: &Vec<(u32, u32)>) {
     let lefts: BinaryHeap<_> = nums
@@ -129,21 +130,14 @@ pub(crate) fn day1(input: Option<PathBuf>) {
         Some(infile) => File::open(infile),
     };
     println!("data = {:?}", data);
-    let nums = parse(data.unwrap());
+    let nums = parse_file(data.unwrap(), parser);
     day1p1(&nums);
     day1p2(&nums);
 }
 
-fn parse(input: File) -> Vec<(u32, u32)> {
-    io::BufReader::new(input)
-        .lines()
-        .into_iter()
-        .map(|line| {
-            let binding = line.expect("File should be text with EOLs");
-            let mut parts = binding.split("   ");
-            let left: u32 = parts.next().unwrap().parse().unwrap();
-            let right: u32 = parts.next().unwrap().parse().unwrap();
-            (left, right)
-        })
-        .collect()
+fn parser(line: String) -> (u32, u32) {
+    let mut parts = line.split("   ");
+    let left: u32 = parts.next().unwrap().parse().unwrap();
+    let right: u32 = parts.next().unwrap().parse().unwrap();
+    (left, right)
 }

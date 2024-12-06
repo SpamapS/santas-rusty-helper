@@ -37,14 +37,16 @@ So, in this example, 2 reports are safe.
 Analyze the unusual data from the engineers. How many reports are safe?
  */
 
-use std::{
-    fs::File,
-    io::{self, BufRead},
-    path::PathBuf,
-};
+use std::{fs::File, path::PathBuf};
+
+use crate::util::parse_file;
 
 pub fn day2(path: Option<PathBuf>) {
-    let nums = parse(path);
+    let input = match path {
+        None => File::open("day2test.txt"),
+        Some(path) => File::open(path),
+    };
+    let nums = parse_file(input.unwrap(), parser);
     println!(
         "{} are safe without dampener",
         nums.iter().filter(|&report| issafe(report)).count()
@@ -125,21 +127,9 @@ fn issafe(report: &Vec<i32>) -> bool {
         == report.len()
 }
 
-fn parse(path: Option<PathBuf>) -> Vec<Vec<i32>> {
-    let input = match path {
-        None => File::open("day2test.txt"),
-        Some(path) => File::open(path),
-    }
-    .unwrap();
-    io::BufReader::new(input)
-        .lines()
-        .into_iter()
-        .map(|line| {
-            let binding = line.expect("File should be text with EOLs");
-            let parts = binding.split(" ");
-            parts
-                .map(|p| p.parse::<i32>().expect("all parts should be ints"))
-                .collect()
-        })
+fn parser(line: String) -> Vec<i32> {
+    let parts = line.split(" ");
+    parts
+        .map(|p| p.parse::<i32>().expect("all parts should be ints"))
         .collect()
 }
