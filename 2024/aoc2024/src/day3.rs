@@ -46,18 +46,23 @@ Handle the new instructions; what do you get if you add up all of the results of
 use crate::util::parse_file;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::{fs::File, path::PathBuf};
+use std::{
+    borrow::Borrow,
+    fs::File,
+    path::PathBuf,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 pub fn day3(path: Option<PathBuf>) {
-    /*let input = match path.clone() {
+    let input = match path.clone() {
         None => File::open("day3test.txt"),
         Some(path) => File::open(path),
     };
     let muls = parse_file(input.unwrap(), parser);
     let sum: i32 = muls.iter().sum();
-    println!("{:?} sum = {}", muls, sum);*/
+    println!("{:?} sum = {}", muls, sum);
     let input = match path {
-        None => File::open("day3test.txt"),
+        None => File::open("day3p2test.txt"),
         Some(path) => File::open(path),
     };
     let muls2 = parse_file(input.unwrap(), parserp2);
@@ -79,24 +84,24 @@ fn parser(line: String) -> i32 {
         .sum()
 }
 
+static ENABLED: AtomicBool = AtomicBool::new(true);
+
 fn parserp2(line: String) -> i32 {
     static RE: Lazy<Regex> =
         Lazy::new(|| Regex::new(r#"(don't\(\)|do\(\)|mul\([0-9]{1,3},[0-9]{1,3}\))"#).unwrap());
     static SUBRE: Lazy<Regex> =
         Lazy::new(|| Regex::new(r"mul\(([0-9]{1,3}),([0-9]{1,3})\)").unwrap());
-    let mut enabled = true;
     RE.find_iter(&line)
         .filter_map(|m| {
             let cmd = m.as_str();
-            println!("cmd = {cmd}");
-            if cmd == "do" {
-                enabled = true;
+            if cmd == "do()" {
+                ENABLED.store(true, Ordering::Relaxed);
                 None
-            } else if cmd == "don't" {
-                enabled = false;
+            } else if cmd == "don't()" {
+                ENABLED.store(false, Ordering::Relaxed);
                 None
             } else {
-                if enabled {
+                if ENABLED.load(Ordering::Relaxed) {
                     let subc = SUBRE.captures(cmd).unwrap();
                     let (_, [sv1, sv2]) = subc.extract();
                     let v1: i32 = sv1.parse::<_>().unwrap();
